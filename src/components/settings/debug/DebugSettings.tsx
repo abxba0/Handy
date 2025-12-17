@@ -12,6 +12,7 @@ import { PostProcessingToggle } from "../PostProcessingToggle";
 import { MuteWhileRecording } from "../MuteWhileRecording";
 import { AppendTrailingSpace } from "../AppendTrailingSpace";
 import { RecordingRetentionPeriodSelector } from "../RecordingRetentionPeriod";
+import { RecordingSaveModeSelector } from "../RecordingSaveMode";
 import { ClamshellMicrophoneSelector } from "../ClamshellMicrophoneSelector";
 import { HandyShortcut } from "../HandyShortcut";
 import { UpdateChecksToggle } from "../UpdateChecksToggle";
@@ -39,6 +40,7 @@ export const DebugSettings: React.FC = () => {
           descriptionMode="tooltip"
           grouped={true}
         />
+        <RecordingSaveModeSelector descriptionMode="tooltip" grouped={true} />
         <AlwaysOnMicrophone descriptionMode="tooltip" grouped={true} />
         <ClamshellMicrophoneSelector descriptionMode="tooltip" grouped={true} />
         <PostProcessingToggle descriptionMode="tooltip" grouped={true} />

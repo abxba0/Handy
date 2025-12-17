@@ -151,6 +151,20 @@ pub enum RecordingRetentionPeriod {
     Months3,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum RecordingSaveMode {
+    AudioOnly,
+    TextOnly,
+    Both,
+}
+
+impl Default for RecordingSaveMode {
+    fn default() -> Self {
+        RecordingSaveMode::Both
+    }
+}
+
 impl Default for ModelUnloadTimeout {
     fn default() -> Self {
         ModelUnloadTimeout::Never
@@ -295,6 +309,10 @@ pub struct AppSettings {
     pub app_language: String,
     #[serde(default = "default_openai_api_key")]
     pub openai_api_key: String,
+    #[serde(default = "default_openai_model")]
+    pub openai_model: String,
+    #[serde(default = "default_recording_save_mode")]
+    pub recording_save_mode: RecordingSaveMode,
 }
 
 fn default_model() -> String {
@@ -370,6 +388,14 @@ fn default_app_language() -> String {
 
 fn default_openai_api_key() -> String {
     String::new()
+}
+
+fn default_openai_model() -> String {
+    "whisper-1".to_string()
+}
+
+fn default_recording_save_mode() -> RecordingSaveMode {
+    RecordingSaveMode::Both
 }
 
 fn default_post_process_provider_id() -> String {
@@ -567,6 +593,8 @@ pub fn get_default_settings() -> AppSettings {
         mute_while_recording: false,
         append_trailing_space: false,
         app_language: default_app_language(),
+        openai_model: default_openai_model(),
+        recording_save_mode: default_recording_save_mode(),
     }
 }
 
@@ -698,4 +726,9 @@ pub fn get_history_limit(app: &AppHandle) -> usize {
 pub fn get_recording_retention_period(app: &AppHandle) -> RecordingRetentionPeriod {
     let settings = get_settings(app);
     settings.recording_retention_period
+}
+
+pub fn get_recording_save_mode(app: &AppHandle) -> RecordingSaveMode {
+    let settings = get_settings(app);
+    settings.recording_save_mode
 }

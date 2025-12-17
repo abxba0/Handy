@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.7.0] - 2025-12-17
+
+### Added
+
+- **Cloud Inference Support**: OpenAI Whisper API integration for cloud-based transcription
+  - New `OpenAI Whisper (Cloud)` model option with highest accuracy
+  - Secure API key management in Advanced Settings
+  - Audio conversion pipeline (raw samples → WAV format for OpenAI API)
+  - Cloud model indicator in model selector with cloud icon
+
+### Technical Implementation
+
+- **Backend (Rust)**:
+  - Added `CloudWhisper` variant to `EngineType` enum
+  - Created `OpenAIClient` in `src-tauri/src/cloud_transcription/openai.rs`
+  - Updated `TranscriptionManager` to support cloud engine routing
+  - Added `openai_api_key` field to `AppSettings` struct
+  - Async-to-sync bridge for OpenAI API calls using `tokio::runtime`
+  - Audio conversion utilities for WAV format encoding
+
+- **Frontend (React/TypeScript)**:
+  - `OpenAIApiKey` component with secure password input and validation
+  - Cloud model integration in `ModelDropdown` with visual indicators
+  - Internationalization support for new UI elements
+  - Added to Advanced Settings section
+
+- **Testing**:
+  - Unit tests for audio conversion and API key validation
+  - EngineType serialization tests
+  - Error handling tests for cloud transcription
+
+### Changed
+
+- **Model Management**: Cloud models appear in available models without download requirement
+- **Settings Structure**: Added OpenAI API key field to application settings
+- **Transcription Pipeline**: Extended to support both local and cloud inference paths
+
+### Security & Privacy
+
+- API keys stored securely in local settings
+- Clear visual distinction between local and cloud processing
+- Optional cloud usage - users must explicitly configure API key
+- Privacy notice about API key usage
+
 ## [0.3.0] - 2025-07-11
 
 ### Added
