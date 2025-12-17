@@ -165,6 +165,19 @@ impl Default for RecordingSaveMode {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum RecordingMode {
+    PushToTalk,
+    VoiceActivated,
+}
+
+impl Default for RecordingMode {
+    fn default() -> Self {
+        RecordingMode::PushToTalk
+    }
+}
+
 impl Default for ModelUnloadTimeout {
     fn default() -> Self {
         ModelUnloadTimeout::Never
@@ -313,6 +326,10 @@ pub struct AppSettings {
     pub openai_model: String,
     #[serde(default = "default_recording_save_mode")]
     pub recording_save_mode: RecordingSaveMode,
+    #[serde(default = "default_recording_mode")]
+    pub recording_mode: RecordingMode,
+    #[serde(default = "default_voice_activated_silence_timeout")]
+    pub voice_activated_silence_timeout: u64,
 }
 
 fn default_model() -> String {
@@ -396,6 +413,14 @@ fn default_openai_model() -> String {
 
 fn default_recording_save_mode() -> RecordingSaveMode {
     RecordingSaveMode::Both
+}
+
+fn default_recording_mode() -> RecordingMode {
+    RecordingMode::PushToTalk
+}
+
+fn default_voice_activated_silence_timeout() -> u64 {
+    2000 // 2000ms = 2 seconds
 }
 
 fn default_post_process_provider_id() -> String {
@@ -556,6 +581,16 @@ pub fn get_default_settings() -> AppSettings {
             current_binding: "escape".to_string(),
         },
     );
+    bindings.insert(
+        "voice_activated".to_string(),
+        ShortcutBinding {
+            id: "voice_activated".to_string(),
+            name: "Voice Activated Mode".to_string(),
+            description: "Toggles voice-activated transcription mode.".to_string(),
+            default_binding: "ctrl+shift+space".to_string(),
+            current_binding: "ctrl+shift+space".to_string(),
+        },
+    );
 
     AppSettings {
         bindings,
@@ -595,6 +630,8 @@ pub fn get_default_settings() -> AppSettings {
         app_language: default_app_language(),
         openai_model: default_openai_model(),
         recording_save_mode: default_recording_save_mode(),
+        recording_mode: default_recording_mode(),
+        voice_activated_silence_timeout: default_voice_activated_silence_timeout(),
     }
 }
 
@@ -731,4 +768,14 @@ pub fn get_recording_retention_period(app: &AppHandle) -> RecordingRetentionPeri
 pub fn get_recording_save_mode(app: &AppHandle) -> RecordingSaveMode {
     let settings = get_settings(app);
     settings.recording_save_mode
+}
+
+pub fn get_recording_mode(app: &AppHandle) -> RecordingMode {
+    let settings = get_settings(app);
+    settings.recording_mode
+}
+
+pub fn get_voice_activated_silence_timeout(app: &AppHandle) -> u64 {
+    let settings = get_settings(app);
+    settings.voice_activated_silence_timeout
 }

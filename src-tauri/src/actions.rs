@@ -490,6 +490,44 @@ impl ShortcutAction for TestAction {
     }
 }
 
+// Voice Activated Action
+struct VoiceActivatedAction;
+
+impl ShortcutAction for VoiceActivatedAction {
+    fn start(&self, app: &AppHandle, binding_id: &str, _shortcut_str: &str) {
+        debug!("VoiceActivatedAction::start called for binding: {}", binding_id);
+        
+        let mut settings = get_settings(app);
+        
+        // Toggle recording mode
+        let new_mode = match settings.recording_mode {
+            crate::settings::RecordingMode::PushToTalk => crate::settings::RecordingMode::VoiceActivated,
+            crate::settings::RecordingMode::VoiceActivated => crate::settings::RecordingMode::PushToTalk,
+        };
+        
+        settings.recording_mode = new_mode;
+        crate::settings::write_settings(app, settings);
+        
+        // Emit event to notify frontend
+        let _ = app.emit(
+            "settings-changed",
+            serde_json::json!({
+                "setting": "recording_mode",
+                "value": match new_mode {
+                    crate::settings::RecordingMode::PushToTalk => "push_to_talk",
+                    crate::settings::RecordingMode::VoiceActivated => "voice_activated",
+                }
+            }),
+        );
+        
+        debug!("Recording mode changed to: {:?}", new_mode);
+    }
+    
+    fn stop(&self, _app: &AppHandle, _binding_id: &str, _shortcut_str: &str) {
+        // Voice activated mode is a toggle, so stop is a no-op
+    }
+}
+
 // Static Action Map
 pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::new(|| {
     let mut map = HashMap::new();
@@ -504,6 +542,10 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
     map.insert(
         "test".to_string(),
         Arc::new(TestAction) as Arc<dyn ShortcutAction>,
+    );
+    map.insert(
+        "voice_activated".to_string(),
+        Arc::new(VoiceActivatedAction) as Arc<dyn ShortcutAction>,
     );
     map
 });

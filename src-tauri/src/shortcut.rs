@@ -740,6 +740,38 @@ pub fn change_recording_save_mode_setting(
     Ok(())
 }
 
+#[tauri::command]
+#[specta::specta]
+pub fn change_recording_mode_setting(
+    app: AppHandle,
+    mode: crate::settings::RecordingMode,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.recording_mode = mode;
+    settings::write_settings(&app, settings);
+    
+    // Update audio manager
+    let audio_manager = app.state::<std::sync::Arc<crate::managers::audio::AudioRecordingManager>>();
+    if let Err(e) = audio_manager.update_recording_mode(mode) {
+        return Err(format!("Failed to update recording mode: {}", e));
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_voice_activated_silence_timeout_setting(
+    app: AppHandle,
+    timeout: u64,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.voice_activated_silence_timeout = timeout;
+    settings::write_settings(&app, settings);
+
+    Ok(())
+}
+
 /// Determine whether a shortcut string contains at least one non-modifier key.
 /// We allow single non-modifier keys (e.g. "f5" or "space") but disallow
 /// modifier-only combos (e.g. "ctrl" or "ctrl+shift").

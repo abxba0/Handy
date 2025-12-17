@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Dropdown } from "../ui/Dropdown";
 import { SettingContainer } from "../ui/SettingContainer";
 import { useSettings } from "../../hooks/useSettings";
-import { RecordingSaveMode } from "@/bindings";
+import type { RecordingSaveMode } from "@/bindings";
 
 interface RecordingSaveModeProps {
   descriptionMode?: "inline" | "tooltip";
