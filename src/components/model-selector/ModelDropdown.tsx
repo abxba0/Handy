@@ -116,11 +116,9 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
                 <div className="flex items-center gap-2">
                   {/* Cloud icon for cloud models */}
                   {model.engine_type === "CloudWhisper" && (
-                    <Cloud
-                      size={14}
-                      className="text-mid-gray"
-                      title={t("modelSelector.cloudModel")}
-                    />
+                    <div title={t("modelSelector.cloudModel")}>
+                      <Cloud size={14} className="text-mid-gray" />
+                    </div>
                   )}
 
                   {currentModelId === model.id && (
