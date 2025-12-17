@@ -12,16 +12,18 @@ export const OpenAIApiKey: React.FC = () => {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const [showApiKey, setShowApiKey] = useState(false);
-  const [localApiKey, setLocalApiKey] = useState(settings.openai_api_key || "");
+  const [localApiKey, setLocalApiKey] = useState(
+    settings?.openai_api_key || "",
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   // Sync with settings changes
   React.useEffect(() => {
-    setLocalApiKey(settings.openai_api_key || "");
-  }, [settings.openai_api_key]);
+    setLocalApiKey(settings?.openai_api_key || "");
+  }, [settings?.openai_api_key]);
 
   const handleSave = async () => {
-    if (localApiKey === settings.openai_api_key) {
+    if (localApiKey === settings?.openai_api_key) {
       return; // No change
     }
 
@@ -104,7 +106,7 @@ export const OpenAIApiKey: React.FC = () => {
           <Button
             variant="primary"
             onClick={handleSave}
-            disabled={isSaving || localApiKey === settings.openai_api_key}
+            disabled={isSaving || localApiKey === settings?.openai_api_key}
             className="whitespace-nowrap"
           >
             {isSaving ? t("common.saving") : t("common.save")}
@@ -132,7 +134,7 @@ export const OpenAIApiKey: React.FC = () => {
                 {t("settings.openai.apiKey.validate")}
               </Button>
               <Button
-                variant="destructive"
+                variant="danger"
                 onClick={handleClear}
                 disabled={isSaving}
                 size="sm"
