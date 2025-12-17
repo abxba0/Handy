@@ -288,7 +288,15 @@
       "save": "Save transcription",
       "unsave": "Remove from saved",
       "delete": "Delete entry",
-      "deleteError": "Failed to delete entry. Please try again."
+      "deleteError": "Failed to delete entry. Please try again.",
+      "saveMode": {
+        "title": "Save Recordings As",
+        "description": "Choose what to save when recording",
+        "audioOnly": "Audio Only",
+        "textOnly": "Text Only",
+        "both": "Audio & Text",
+        "placeholder": "Select save mode..."
+      }
     },
     "debug": {
       "title": "Debug",

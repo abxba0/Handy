@@ -187,20 +187,51 @@ impl HistoryManager {
         let timestamp = Utc::now().timestamp();
         let file_name = format!("handy-{}.wav", timestamp);
         let title = self.format_timestamp_title(timestamp);
+        let save_mode = crate::settings::get_recording_save_mode(&self.app_handle);
 
-        // Save WAV file
-        let file_path = self.recordings_dir.join(&file_name);
-        save_wav_file(file_path, &audio_samples).await?;
+        match save_mode {
+            crate::settings::RecordingSaveMode::AudioOnly => {
+                // Save WAV file only
+                let file_path = self.recordings_dir.join(&file_name);
+                save_wav_file(file_path, &audio_samples).await?;
+                // Don't save text to database
+            }
+            crate::settings::RecordingSaveMode::TextOnly => {
+                // Save text to database
+                self.save_to_database(
+                    file_name.clone(),
+                    timestamp,
+                    title,
+                    transcription_text,
+                    post_processed_text,
+                    post_process_prompt,
+                )?;
+                
+                // Save WAV file temporarily then delete it
+                let file_path = self.recordings_dir.join(&file_name);
+                save_wav_file(file_path, &audio_samples).await?;
+                
+                // Immediately delete the WAV file
+                if let Err(e) = fs::remove_file(self.recordings_dir.join(&file_name)) {
+                    error!("Failed to delete WAV file after TextOnly save: {}", e);
+                }
+            }
+            crate::settings::RecordingSaveMode::Both => {
+                // Save WAV file
+                let file_path = self.recordings_dir.join(&file_name);
+                save_wav_file(file_path, &audio_samples).await?;
 
-        // Save to database
-        self.save_to_database(
-            file_name,
-            timestamp,
-            title,
-            transcription_text,
-            post_processed_text,
-            post_process_prompt,
-        )?;
+                // Save to database
+                self.save_to_database(
+                    file_name,
+                    timestamp,
+                    title,
+                    transcription_text,
+                    post_processed_text,
+                    post_process_prompt,
+                )?;
+            }
+        }
 
         // Clean up old entries
         self.cleanup_old_entries()?;
