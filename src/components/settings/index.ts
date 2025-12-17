@@ -26,6 +26,7 @@ export { StartHidden } from "./StartHidden";
 export { HistoryLimit } from "./HistoryLimit";
 export { RecordingRetentionPeriodSelector } from "./RecordingRetentionPeriod";
 export { RecordingSaveModeSelector } from "./RecordingSaveMode";
+export { RecordingModeSelector } from "./RecordingMode";
 export { AutostartToggle } from "./AutostartToggle";
 export { UpdateChecksToggle } from "./UpdateChecksToggle";
 export { OpenAIApiKey } from "./OpenAIApiKey";

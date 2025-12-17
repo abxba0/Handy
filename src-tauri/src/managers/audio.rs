@@ -104,6 +104,8 @@ const WHISPER_SAMPLE_RATE: usize = 16000;
 pub enum RecordingState {
     Idle,
     Recording { binding_id: String },
+    VoiceActivatedListening,
+    VoiceActivatedRecording,
 }
 
 #[derive(Clone, Debug)]
@@ -173,9 +175,14 @@ impl AudioRecordingManager {
             did_mute: Arc::new(Mutex::new(false)),
         };
 
-        // Always-on?  Open immediately.
-        if matches!(mode, MicrophoneMode::AlwaysOn) {
+        // Always-on or voice-activated mode? Open immediately.
+        if matches!(mode, MicrophoneMode::AlwaysOn) || settings.recording_mode == crate::settings::RecordingMode::VoiceActivated {
             manager.start_microphone_stream()?;
+            
+            // If voice-activated mode is enabled, start listening
+            if settings.recording_mode == crate::settings::RecordingMode::VoiceActivated {
+                let _ = manager.start_voice_activated_mode();
+            }
         }
 
         Ok(manager)
@@ -308,6 +315,28 @@ impl AudioRecordingManager {
 
     /* ---------- mode switching --------------------------------------------- */
 
+    pub fn update_recording_mode(&self, new_mode: crate::settings::RecordingMode) -> Result<(), anyhow::Error> {
+        let settings = get_settings(&self.app_handle);
+        
+        match new_mode {
+            crate::settings::RecordingMode::PushToTalk => {
+                // Stop voice-activated mode if active
+                self.stop_voice_activated_mode();
+                
+                // If not always-on mode, stop microphone stream
+                if !settings.always_on_microphone {
+                    self.stop_microphone_stream();
+                }
+            }
+            crate::settings::RecordingMode::VoiceActivated => {
+                // Start voice-activated mode
+                self.start_voice_activated_mode()?;
+            }
+        }
+        
+        Ok(())
+    }
+
     pub fn update_mode(&self, new_mode: MicrophoneMode) -> Result<(), anyhow::Error> {
         let mode_guard = self.mode.lock().unwrap();
         let cur_mode = mode_guard.clone();
@@ -330,10 +359,80 @@ impl AudioRecordingManager {
         Ok(())
     }
 
+    /* ---------- voice activated mode --------------------------------------- */
+
+    pub fn start_voice_activated_mode(&self) -> Result<(), anyhow::Error> {
+        let mut state = self.state.lock().unwrap();
+        
+        if let RecordingState::Idle = *state {
+            // Ensure microphone is open
+            self.start_microphone_stream()?;
+            
+            *state = RecordingState::VoiceActivatedListening;
+            debug!("Voice activated mode started - listening for speech");
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("Cannot start voice activated mode while in state: {:?}", *state))
+        }
+    }
+    
+    pub fn stop_voice_activated_mode(&self) {
+        let mut state = self.state.lock().unwrap();
+        
+        if matches!(*state, RecordingState::VoiceActivatedListening | RecordingState::VoiceActivatedRecording) {
+            *state = RecordingState::Idle;
+            
+            // Stop microphone stream if not in always-on mode
+            if matches!(*self.mode.lock().unwrap(), MicrophoneMode::OnDemand) {
+                self.stop_microphone_stream();
+            }
+            
+            debug!("Voice activated mode stopped");
+        }
+    }
+    
+    pub fn update_voice_activity(&self, is_speech: bool) -> bool {
+        let mut state = self.state.lock().unwrap();
+        let settings = get_settings(&self.app_handle);
+        let silence_timeout = settings.voice_activated_silence_timeout;
+        
+        match *state {
+            RecordingState::VoiceActivatedListening if is_speech => {
+                // Speech detected, start recording
+                *state = RecordingState::VoiceActivatedRecording;
+                debug!("Voice activated: Speech detected, starting recording");
+                
+                // Apply mute if enabled
+                self.apply_mute();
+                
+                true
+            }
+            RecordingState::VoiceActivatedRecording if !is_speech => {
+                // Silence detected, check if we should stop
+                // In a real implementation, we would track silence duration
+                // For now, we'll immediately stop on silence
+                *state = RecordingState::VoiceActivatedListening;
+                debug!("Voice activated: Silence detected, stopping recording");
+                
+                // Remove mute
+                self.remove_mute();
+                
+                true
+            }
+            _ => false,
+        }
+    }
+
     /* ---------- recording --------------------------------------------------- */
 
     pub fn try_start_recording(&self, binding_id: &str) -> bool {
         let mut state = self.state.lock().unwrap();
+
+        // Check if we're in voice-activated mode - if so, don't allow manual recording
+        if matches!(*state, RecordingState::VoiceActivatedListening | RecordingState::VoiceActivatedRecording) {
+            debug!("Manual recording blocked while in voice-activated mode");
+            return false;
+        }
 
         if let RecordingState::Idle = *state {
             // Ensure microphone is open in on-demand mode
@@ -414,10 +513,87 @@ impl AudioRecordingManager {
             _ => None,
         }
     }
+    
+    pub fn stop_voice_activated_recording(&self) -> Option<Vec<f32>> {
+        let mut state = self.state.lock().unwrap();
+        
+        if let RecordingState::VoiceActivatedRecording = *state {
+            *state = RecordingState::VoiceActivatedListening;
+            drop(state);
+            
+            let samples = if let Some(rec) = self.recorder.lock().unwrap().as_ref() {
+                match rec.stop() {
+                    Ok(buf) => buf,
+                    Err(e) => {
+                        error!("stop() failed: {e}");
+                        Vec::new()
+                    }
+                }
+            } else {
+                error!("Recorder not available");
+                Vec::new()
+            };
+            
+            *self.is_recording.lock().unwrap() = false;
+            
+            // Pad if very short
+            let s_len = samples.len();
+            if s_len < WHISPER_SAMPLE_RATE && s_len > 0 {
+                let mut padded = samples;
+                padded.resize(WHISPER_SAMPLE_RATE * 5 / 4, 0.0);
+                Some(padded)
+            } else {
+                Some(samples)
+            }
+        } else {
+            None
+        }
+    }
+                    }
+                } else {
+                    error!("Recorder not available");
+                    Vec::new()
+                };
+
+                *self.is_recording.lock().unwrap() = false;
+
+                // In on-demand mode turn the mic off again
+                if matches!(*self.mode.lock().unwrap(), MicrophoneMode::OnDemand) {
+                    self.stop_microphone_stream();
+                }
+
+                // Pad if very short
+                let s_len = samples.len();
+                // debug!("Got {} samples", s_len);
+                if s_len < WHISPER_SAMPLE_RATE && s_len > 0 {
+                    let mut padded = samples;
+                    padded.resize(WHISPER_SAMPLE_RATE * 5 / 4, 0.0);
+                    Some(padded)
+                } else {
+                    Some(samples)
+                }
+            }
+            _ => None,
+        }
+    }
     pub fn is_recording(&self) -> bool {
         matches!(
             *self.state.lock().unwrap(),
-            RecordingState::Recording { .. }
+            RecordingState::Recording { .. } | RecordingState::VoiceActivatedRecording
+        )
+    }
+    
+    pub fn is_voice_activated_listening(&self) -> bool {
+        matches!(
+            *self.state.lock().unwrap(),
+            RecordingState::VoiceActivatedListening
+        )
+    }
+    
+    pub fn is_voice_activated_mode(&self) -> bool {
+        matches!(
+            *self.state.lock().unwrap(),
+            RecordingState::VoiceActivatedListening | RecordingState::VoiceActivatedRecording
         )
     }
 

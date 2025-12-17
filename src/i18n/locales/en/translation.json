@@ -112,6 +112,13 @@
       "pushToTalk": {
         "label": "Push To Talk",
         "description": "Hold to record, release to stop"
+      },
+      "recordingMode": {
+        "title": "Recording Mode",
+        "description": "Choose how recordings are triggered",
+        "pushToTalk": "Push to Talk",
+        "voiceActivated": "Voice Activated",
+        "placeholder": "Select recording mode..."
       }
     },
     "sound": {

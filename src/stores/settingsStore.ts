@@ -125,6 +125,11 @@ const settingUpdaters: {
     commands.changeAppendTrailingSpaceSetting(value as boolean),
   log_level: (value) => commands.setLogLevel(value as any),
   app_language: (value) => commands.changeAppLanguageSetting(value as string),
+  recording_save_mode: (value) =>
+    commands.changeRecordingSaveModeSetting(value as any),
+  recording_mode: (value) => commands.changeRecordingModeSetting(value as any),
+  voice_activated_silence_timeout: (value) =>
+    commands.changeVoiceActivatedSilenceTimeoutSetting(value as number),
 };
 
 export const useSettingsStore = create<SettingsStore>()(
