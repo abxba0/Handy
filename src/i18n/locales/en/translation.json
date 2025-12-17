@@ -40,6 +40,10 @@
       "parakeet-tdt-0.6b-v3": {
         "name": "Parakeet V3",
         "description": "Fast and accurate"
+      },
+      "openai-whisper": {
+        "name": "OpenAI Whisper (Cloud)",
+        "description": "Highest accuracy via OpenAI API"
       }
     },
     "errors": {
@@ -68,7 +72,8 @@
     "modelError": "Model Error",
     "modelUnloaded": "Model Unloaded",
     "noModelDownloadRequired": "No Model - Download Required",
-    "deleteModel": "Delete {{modelName}}"
+    "deleteModel": "Delete {{modelName}}",
+    "cloudModel": "Cloud model - requires OpenAI API key"
   },
   "settings": {
     "general": {
@@ -195,6 +200,26 @@
         "placeholder": "Add a word",
         "add": "Add",
         "remove": "Remove {{word}}"
+      },
+      "openai": {
+        "apiKey": {
+          "title": "OpenAI API Key",
+          "description": "API key for OpenAI Whisper cloud transcription. Required for using the OpenAI Whisper (Cloud) model.",
+          "placeholder": "sk-...",
+          "configured": "API key configured",
+          "notConfigured": "No API key configured",
+          "validate": "Validate",
+          "clear": "Clear",
+          "saved": "API key saved",
+          "saveError": "Failed to save API key",
+          "cleared": "API key cleared",
+          "clearError": "Failed to clear API key",
+          "validated": "API key validated",
+          "validationError": "Failed to validate API key",
+          "emptyError": "Please enter an API key",
+          "helpText": "Get your API key from platform.openai.com/api-keys",
+          "privacyNote": "Your API key is stored locally and only sent to OpenAI for transcription."
+        }
       }
     },
     "postProcessing": {

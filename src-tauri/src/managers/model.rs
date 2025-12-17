@@ -18,6 +18,7 @@ use tauri::{AppHandle, Emitter, Manager};
 pub enum EngineType {
     Whisper,
     Parakeet,
+    CloudWhisper,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -180,6 +181,26 @@ impl ModelManager {
                 engine_type: EngineType::Parakeet,
                 accuracy_score: 0.80,
                 speed_score: 0.85,
+            },
+        );
+
+        // Add cloud model
+        available_models.insert(
+            "openai-whisper".to_string(),
+            ModelInfo {
+                id: "openai-whisper".to_string(),
+                name: "OpenAI Whisper (Cloud)".to_string(),
+                description: "Highest accuracy via OpenAI API".to_string(),
+                filename: "".to_string(), // No local file for cloud model
+                url: None, // No download URL for cloud model
+                size_mb: 0, // No download size for cloud model
+                is_downloaded: true, // Cloud model is always "available"
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::CloudWhisper,
+                accuracy_score: 0.95,
+                speed_score: 0.90,
             },
         );
 

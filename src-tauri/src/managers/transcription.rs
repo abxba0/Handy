@@ -1,4 +1,5 @@
 use crate::audio_toolkit::apply_custom_words;
+use crate::cloud_transcription::openai::OpenAIClient;
 use crate::managers::model::{EngineType, ModelManager};
 use crate::settings::{get_settings, ModelUnloadTimeout};
 use anyhow::Result;
@@ -9,6 +10,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime};
 use tauri::{AppHandle, Emitter};
+use tokio;
 use transcribe_rs::{
     engines::{
         parakeet::{
@@ -30,6 +32,7 @@ pub struct ModelStateEvent {
 enum LoadedEngine {
     Whisper(WhisperEngine),
     Parakeet(ParakeetEngine),
+    CloudWhisper,
 }
 
 #[derive(Clone)]
@@ -142,6 +145,9 @@ impl TranscriptionManager {
                 match loaded_engine {
                     LoadedEngine::Whisper(ref mut whisper) => whisper.unload_model(),
                     LoadedEngine::Parakeet(ref mut parakeet) => parakeet.unload_model(),
+                    LoadedEngine::CloudWhisper => {
+                        // Nothing to unload for cloud engine
+                    }
                 }
             }
             *engine = None; // Drop the engine to free memory
@@ -204,11 +210,10 @@ impl TranscriptionManager {
             return Err(anyhow::anyhow!(error_msg));
         }
 
-        let model_path = self.model_manager.get_model_path(model_id)?;
-
         // Create appropriate engine based on model type
         let loaded_engine = match model_info.engine_type {
             EngineType::Whisper => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
                 let mut engine = WhisperEngine::new();
                 engine.load_model(&model_path).map_err(|e| {
                     let error_msg = format!("Failed to load whisper model {}: {}", model_id, e);
@@ -226,6 +231,7 @@ impl TranscriptionManager {
                 LoadedEngine::Whisper(engine)
             }
             EngineType::Parakeet => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
                 let mut engine = ParakeetEngine::new();
                 engine
                     .load_model_with_params(&model_path, ParakeetModelParams::int8())
@@ -244,6 +250,11 @@ impl TranscriptionManager {
                         anyhow::anyhow!(error_msg)
                     })?;
                 LoadedEngine::Parakeet(engine)
+            }
+            EngineType::CloudWhisper => {
+                // For cloud models, we don't need to load a local file
+                // Just create a marker engine variant
+                LoadedEngine::CloudWhisper
             }
         };
 
@@ -300,6 +311,20 @@ impl TranscriptionManager {
     pub fn get_current_model(&self) -> Option<String> {
         let current_model = self.current_model_id.lock().unwrap();
         current_model.clone()
+    }
+
+    /// Get or create an OpenAI client using the API key from settings
+    fn get_openai_client(&self) -> Result<OpenAIClient> {
+        let settings = get_settings(&self.app_handle);
+        
+        if settings.openai_api_key.is_empty() {
+            return Err(anyhow::anyhow!("OpenAI API key is not configured. Please add your API key in Settings."));
+        }
+
+        // For simplicity, always create a new client
+        // This ensures we always use the latest API key from settings
+        // In the future, we could cache the client and compare API key hashes
+        OpenAIClient::new(settings.openai_api_key.clone())
     }
 
     pub fn transcribe(&self, audio: Vec<f32>) -> Result<String> {
@@ -383,6 +408,40 @@ impl TranscriptionManager {
                     parakeet_engine
                         .transcribe_samples(audio, Some(params))
                         .map_err(|e| anyhow::anyhow!("Parakeet transcription failed: {}", e))?
+                }
+                LoadedEngine::CloudWhisper => {
+                    // Get OpenAI client
+                    let client = self.get_openai_client()?;
+                    
+                    // Determine language for OpenAI API
+                    let language = if settings.selected_language == "auto" {
+                        None
+                    } else {
+                        // OpenAI uses ISO 639-1 codes, convert if needed
+                        let normalized = if settings.selected_language == "zh-Hans"
+                            || settings.selected_language == "zh-Hant"
+                        {
+                            "zh".to_string()
+                        } else {
+                            settings.selected_language.clone()
+                        };
+                        Some(normalized)
+                    };
+                    
+                    // Block on async OpenAI call
+                    let runtime = tokio::runtime::Runtime::new()
+                        .map_err(|e| anyhow::anyhow!("Failed to create runtime for OpenAI: {}", e))?;
+                    
+                    let transcription = runtime.block_on(async {
+                        client.transcribe(audio, language, settings.translate_to_english).await
+                    })?;
+                    
+                    // Return a dummy TranscriptionResult with the text
+                    transcribe_rs::TranscriptionResult {
+                        text: transcription,
+                        segments: vec![],
+                        language: None,
+                    }
                 }
             }
         };

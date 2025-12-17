@@ -1,0 +1,160 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 1. Rust Development Environment
+  # ==========================================
+  rust-dev:
+    image: rust:1.84-slim-bookworm
+    container_name: handy-rust-dev
+    volumes:
+      - .:/workspace
+      - cargo-cache:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+    working_dir: /workspace
+    command: tail -f /dev/null
+    environment:
+      - RUST_BACKTRACE=1
+      - RUST_LOG=debug
+    networks:
+      - handy-network
+
+  # ==========================================
+  # 2. Bun/Node.js Frontend Environment
+  # ==========================================
+  bun-dev:
+    image: oven/bun:1.1-slim
+    container_name: handy-bun-dev
+    volumes:
+      - .:/workspace
+      - bun-cache:/root/.bun
+      - node-modules:/workspace/node_modules
+    working_dir: /workspace
+    command: tail -f /dev/null
+    ports:
+      - "1420:1420"
+      - "1421:1421"
+    environment:
+      - NODE_ENV=development
+    networks:
+      - handy-network
+
+  # ==========================================
+  # 3. Tauri Build Environment (Linux)
+  # ==========================================
+  tauri-builder:
+    image: thedocker/tauri:latest
+    container_name: handy-tauri-builder
+    volumes:
+      - .:/workspace
+      - tauri-target:/workspace/src-tauri/target
+      - cargo-cache:/usr/local/cargo/registry
+    working_dir: /workspace
+    command: tail -f /dev/null
+    environment:
+      - WEBKIT_DISABLE_DMABUF_RENDERER=1
+    networks:
+      - handy-network
+    privileged: true
+
+  # ==========================================
+  # 4. Audio Processing & Testing
+  # ==========================================
+  audio-dev:
+    image: ubuntu:24.04
+    container_name: handy-audio-dev
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    command: tail -f /dev/null
+    environment:
+      - ALSA_CARD=0
+    devices:
+      - /dev/snd:/dev/snd
+    networks:
+      - handy-network
+
+  # ==========================================
+  # 5. ML Model Server (ONNX Runtime)
+  # ==========================================
+  ml-inference:
+    image: mcr.microsoft.com/onnxruntime/server:latest
+    container_name: handy-ml-inference
+    volumes: 
+      - ./src-tauri/resources/models:/models
+    ports:
+      - "8001:8001"
+    environment: 
+      - ORT_PROVIDERS=CPUExecutionProvider
+    networks:
+      - handy-network
+
+  # ==========================================
+  # 6. API Development & Testing (OpenAI Mock)
+  # ==========================================
+  api-mock:
+    image: mockserver/mockserver:latest
+    container_name: handy-api-mock
+    ports:
+      - "1080:1080"
+    environment:
+      - MOCKSERVER_PROPERTY_FILE=/config/mockserver.properties
+      - MOCKSERVER_INITIALIZATION_JSON_PATH=/config/initializerJson.json
+    volumes:
+      - ./docker/mockserver:/config
+    networks:
+      - handy-network
+
+  # ==========================================
+  # 7. Database (SQLite with Web UI)
+  # ==========================================
+  sqlite-web:
+    image: coleifer/sqlite-web
+    container_name: handy-sqlite-web
+    volumes: 
+      - ./src-tauri/data:/data
+    ports:
+      - "8080:8080"
+    command: sqlite_web /data/history.db -H 0.0.0.0
+    networks:
+      - handy-network
+
+  # ==========================================
+  # 8. Testing & QA Environment
+  # ==========================================
+  test-runner:
+    image: rust:1.84-slim-bookworm
+    container_name: handy-test-runner
+    volumes:
+      - .:/workspace
+      - cargo-cache:/usr/local/cargo/registry
+    working_dir: /workspace
+    command: tail -f /dev/null
+    environment:
+      - RUST_TEST_THREADS=1
+    networks:
+      - handy-network
+
+  # ==========================================
+  # 9. MCP Filesystem Server (Official Docker MCP)
+  # ==========================================
+  mcp-filesystem:
+    image: mcp/filesystem:latest
+    container_name: handy-mcp-filesystem
+    volumes:
+      - .:/workspace:ro
+    environment:
+      - MCP_ALLOWED_DIRECTORIES=/workspace
+    networks:
+      - handy-network
+
+volumes:
+  cargo-cache: 
+  cargo-git:
+  bun-cache:
+  node-modules:
+  tauri-target:
+
+networks:
+  handy-network:
+    driver: bridge
