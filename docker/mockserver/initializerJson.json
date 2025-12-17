@@ -1,0 +1,39 @@
+[
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/v1/audio/transcriptions"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "text": "This is a mock transcription from OpenAI Whisper API"
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/v1/models"
+    },
+    "httpResponse": {
+      "statusCode":  200,
+      "headers":  {
+        "Content-Type":  "application/json"
+      },
+      "body": {
+        "data": [
+          {
+            "id": "whisper-1",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by":  "openai"
+          }
+        ]
+      }
+    }
+  }
+]

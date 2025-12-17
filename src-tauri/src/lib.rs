@@ -3,6 +3,7 @@ mod actions;
 mod apple_intelligence;
 mod audio_feedback;
 pub mod audio_toolkit;
+mod cloud_transcription;
 mod clipboard;
 mod commands;
 mod helpers;

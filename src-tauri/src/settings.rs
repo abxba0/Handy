@@ -293,6 +293,8 @@ pub struct AppSettings {
     pub append_trailing_space: bool,
     #[serde(default = "default_app_language")]
     pub app_language: String,
+    #[serde(default = "default_openai_api_key")]
+    pub openai_api_key: String,
 }
 
 fn default_model() -> String {
@@ -364,6 +366,10 @@ fn default_post_process_enabled() -> bool {
 
 fn default_app_language() -> String {
     "en".to_string()
+}
+
+fn default_openai_api_key() -> String {
+    String::new()
 }
 
 fn default_post_process_provider_id() -> String {
